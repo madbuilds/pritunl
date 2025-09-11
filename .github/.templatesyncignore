@@ -1,0 +1,6 @@
+./.github/workflows/repository-init.yml
+./.github/workflows/repository-update.yml
+./docs/description.webp
+./template
+./.gitignore
+./README.md
