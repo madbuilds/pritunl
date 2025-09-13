@@ -1,9 +1,52 @@
 services:
-  nginx:
-    image: ${SERVICE_IMAGE_NAME}${SERVICE_IMAGE_TAG:+:${SERVICE_IMAGE_TAG}}${SERVICE_IMAGE_DIGEST:+@${SERVICE_IMAGE_DIGEST}}
+  vpn:
+    image: jippi/pritunl:1.32.4349.59-minimal
+    cap_add:
+      - NET_ADMIN
     ports:
-      - "80:80"
+      - "1194:1194/udp"
+      - "1194:1194/tcp"
+      - "14700-14725:14700-14725/udp"
+      - "14700-14725:14700-14725/tcp"
+    restart: unless-stopped
+    privileged: true
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    environment:
+      - PRITUNL_MONGODB_URI=mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@mongodb:27018/${MONGODB_DATABASE}
+      - PRITUNL_DEBUG=false
+    depends_on:
+      - mongodb
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "Applying Pritunl settings before starting..."
+        set -euo pipefail
+        exec pritunl start
+        echo "Waiting 10 seconds for Pritunl to start..."
+        until prirunl status | grep -q "started"; do sleep 1; done
+        echo "importing settings..."
+        pritunl set user 'pritunl'
+        pritunl set password 'pritunl'
+        pritunl set app.reverse_proxy true
+        pritunl set app.server_ssl false
+        echo "initialization complete"
+
+  mongodb:
+    image: bitnami/mongodb:6.0.13
+    ports:
+      - "27018:27018"
     restart: unless-stopped
     environment:
-      - TZ=Europe/Moscow
-      - FOO=${FOO}
+      - ALLOW_EMPTY_PASSWORD=no
+      - MONGODB_ENABLE_JOURNAL=false
+      - MONGODB_ENABLE_DIRECTORY_PER_DB=yes
+      - MONGODB_PORT_NUMBER=27018
+      - MONGODB_ROOT_USER=${MONGODB_ROOT_USER}
+      - MONGODB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
+      - MONGODB_USERNAME=${MONGODB_USER}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
+    volumes:
+      - ./_shared/MONGO/:/bitnami/mongodb/:rw
