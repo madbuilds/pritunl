@@ -16,13 +16,12 @@ env:
 
 jobs:
   prepare-release:
-    if: ${{ !startsWith(github.repository, 'madbuilds/template-') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: parse version
         env:
